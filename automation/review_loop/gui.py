@@ -101,14 +101,22 @@ class App:
         ttk.Label(outer, text="Mỗi lượt được lưu trong logs/review_loop. Dừng không cắt giao dịch dữ liệu đang chạy.",
                   wraplength=960).pack(anchor="w", pady=(8, 0))
         self.update_mode_badge()
+        window.protocol("WM_DELETE_WINDOW", self.close)
+        window.deiconify()
+        window.lift()
+        window.attributes("-topmost", True)
+        window.after(300, lambda: window.attributes("-topmost", False))
+        window.focus_force()
+        threading.Thread(target=self._check_cli_async, daemon=True).start()
+        window.after(200, self.poll)
+
+    def _check_cli_async(self):
         for name in ["agy", "codex", "claude"]:
             try:
                 path, note = cli_health(name)
-                self.append(f"Đã tìm thấy {name}: {path} ({note})")
+                self.bus.put(("init_log", f"Đã tìm thấy {name}: {path} ({note})"))
             except Exception as e:
-                self.append(str(e))
-        window.protocol("WM_DELETE_WINDOW", self.close)
-        window.after(200, self.poll)
+                self.bus.put(("init_log", str(e)))
 
     def update_mode_badge(self):
         p = Path(self.project.get().strip() or ".")
@@ -196,7 +204,8 @@ class App:
             while True:
                 kind, msg = self.bus.get_nowait()
                 self.append(msg)
-                self.status.set(msg)
+                if kind != "init_log":
+                    self.status.set(msg)
                 if kind == "done":
                     self.active = False
                     self.progress.stop()
