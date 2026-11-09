@@ -272,8 +272,54 @@ def test_commands_and_cli_error_extraction(tmp_path):
     assert w_cmd[idx + 1] == "Làm nhiệm vụ X"
     assert (folder / "schema.json").is_file()
 
+    for prov in ["agy", "codex", "claude", "glm"]:
+        c_worker = commands("worker", tmp_path / f"w_{prov}", tmp_path, prompt="Test", provider=prov)
+        c_review = commands("reviewer", tmp_path / f"r_{prov}", tmp_path, prompt="Test", provider=prov)
+        assert isinstance(c_worker, list) and len(c_worker) >= 2
+        assert isinstance(c_review, list) and len(c_review) >= 2
+
     (folder / "stdout.log").write_text(
         json.dumps({"is_error": True, "result": "Failed to authenticate: OAuth session expired"}),
         encoding="utf-8",
     )
     assert "Failed to authenticate" in _extract_cli_error(folder)
+
+
+def test_worker_only_and_optional_final_reviewer(tmp_path):
+    proj = make_fake_general_project(tmp_path)
+    w_ok = {
+        "status": "COMPLETED",
+        "summary": "Đã hoàn thành",
+        "changed_files": ["src/app.py"],
+        "tests": ["pytest"],
+        "evidence_paths": ["docs/report.md"],
+        "blockers": [],
+    }
+
+    # Case 1: Worker only (reviewer="none", final="none"), empty criteria allowed
+    job_worker_only = create_job(
+        proj, "Chỉ cần Worker chạy", [], max_rounds=1,
+        agents={"worker": "glm", "reviewer": "none", "final": "none"},
+    )
+    runner1 = FakeRunner([w_ok])
+    ctrl1 = Controller(job_worker_only, runner=runner1)
+    assert ctrl1.run() == "READY_FOR_REVIEW"
+    assert [c[0] for c in runner1.calls] == ["worker"]
+
+    # Case 2: Worker + Reviewer only (final="none")
+    job_no_final = create_job(
+        proj, "Worker + Reviewer, bỏ qua Final", ["Có báo cáo"], max_rounds=2,
+        agents={"worker": "agy", "reviewer": "glm", "final": "none"},
+    )
+    r_pass = {
+        "verdict": "PASS",
+        "summary": "Đạt",
+        "checks": [{"id": "C1", "passed": True, "evidence": "docs/report.md"}],
+        "findings": [],
+        "required_changes": [],
+        "evidence_paths": ["docs/report.md"],
+    }
+    runner2 = FakeRunner([w_ok, r_pass])
+    ctrl2 = Controller(job_no_final, runner=runner2)
+    assert ctrl2.run() == "READY_FOR_REVIEW"
+    assert [c[0] for c in runner2.calls] == ["worker", "reviewer"]

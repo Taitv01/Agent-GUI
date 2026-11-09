@@ -1,48 +1,40 @@
-# Agent GUI (`Agy · Codex · Claude`)
+# Agent GUI (`Agy · Codex · Claude · GLM · Gemini`)
 
-Công cụ giao diện điều khiển (Tkinter GUI & CLI) giúp tự động giao việc và phối hợp các AI Agent (**Google Antigravity `agy` · OpenAI `codex` · Anthropic `claude`**) cho mọi dự án phần mềm và tự động hóa.
+Công cụ giao diện điều khiển 2 Tab (Tkinter GUI & CLI) giúp quản lý kết nối/đăng nhập đa Agent (**Google Antigravity `agy` · OpenAI `codex` · Anthropic `claude` · Z.ai / Zhipu `glm` · Google `gemini`**) và tự động điều phối công việc cho mọi dự án.
 
 ## Tính năng chính
 
-- **Điều khiển tập trung trên một cửa sổ:**
-  - Chọn bất kỳ thư mục dự án nào trên máy, nhập nội dung công việc và tiêu chí đầu ra.
-  - Tự động phối hợp thực hiện (`agy`) và đối chiếu độc lập (`codex` / `claude`) theo chuẩn JSON Schema nghiêm ngặt.
-- **Hỗ trợ mọi loại dự án (General-purpose):**
-  - Mặc định hoạt động ở **Chế độ Dự án chung (`General Project`)** cho mọi tác vụ lập trình, script, xử lý dữ liệu hoặc tự động hóa.
-  - Tự động bật thêm lớp bảo vệ `guard.py` nếu mở trên dự án có cấu hình `dharma-archive`.
-- **Lưu phiên bền vững, Tạm dừng & Tiếp tục an toàn:**
-  - Lưu đầy đủ lịch sử và log từng lượt tại `<project>/logs/review_loop/<session_id>/`.
-  - Hỗ trợ tạm dừng sau lượt đang chạy và mở lại phiên (`state.json`) để chạy tiếp từ bước đang dở.
+1. **Tab `📋 Giao việc & Điều phối Agent`:**
+   - Tuỳ ý lựa chọn Agent nào sẽ đóng vai trò:
+     - **1. Làm việc (Worker):** `agy`, `claude`, `glm`, `codex`, hoặc `gemini`.
+     - **2. Kiểm tra (Reviewer):** `none (Không dùng / Bỏ qua)`, `codex`, `claude`, `glm`, `agy`, hoặc `gemini`.
+     - **3. Kiểm cuối (Final):** `none (Không dùng / Bỏ qua)`, `claude`, `codex`, `glm`, `agy`, hoặc `gemini`.
+   - Nếu chọn `none` cho cả 2 bước Kiểm tra & Kiểm cuối, công cụ chỉ chạy Agent Làm việc (`Worker`) và hoàn tất ngay sau khi xong.
+2. **Tab `🔌 Đăng nhập & Kết nối Agent`:**
+   - Kiểm tra trạng thái cài đặt & xác thực của cả 5 Agent (`agy`, `codex`, `claude`, `glm`, `gemini`).
+   - Nút **`🔑 Đăng nhập CLI`** mở cửa sổ đăng nhập trực tiếp cho `agy`, `codex`, `claude`, `gemini`.
+   - Khung cấu hình riêng cho **GLM (`Z.ai / Zhipu Coding Plan`)**: nhập `GLM API Key`, chọn `Base URL` (`https://api.z.ai/api/anthropic` hoặc `https://open.bigmodel.cn/api/anthropic`) và chọn `Model` (`glm-4.7`, `glm-4.6`, `glm-4.5`, `glm-4.5-air`). Dữ liệu khóa lưu cục bộ tại `~/.agent_gui/providers.json` (không đẩy lên Git).
+   - Nút **`⚡ Kiểm tra kết nối (Ping)`** gửi yêu cầu kiểm tra kết nối trực tiếp tới từng Agent hoặc toàn bộ Agent.
 
-## Yêu cầu
+## Cách mở giao diện
 
-- Python `>= 3.10`
-- Các CLI đã cài trên máy: `agy`, `codex`, `claude`
-
-Kiểm tra nhanh trạng thái CLI:
-
-```powershell
-python -X utf8 -m automation.review_loop doctor
-```
-
-## Cách sử dụng
-
-### 1. Mở giao diện Agent GUI
-
-Nhấp đúp `Mo_Agent_GUI.cmd` hoặc chạy:
+Nhấp đúp vào **`Mo_Agent_GUI.exe`** (hoặc `Mo_Agent_GUI.vbs`), hoặc chạy từ bất kỳ thư mục nào trong Terminal:
 
 ```powershell
+agent-gui
+# hoặc:
 python -X utf8 -m automation.review_loop
 ```
 
-### 2. Chạy từ dòng lệnh (CLI)
+## Chạy từ dòng lệnh (CLI)
 
 ```powershell
-python -X utf8 -m automation.review_loop run --project "D:\Du_An" --task-file task.txt --criteria-file criteria.txt --max-rounds 3
-```
+# Kiểm tra trạng thái các Agent
+python -X utf8 -m automation.review_loop doctor
 
-## Chạy kiểm thử
+# Chạy chỉ với Worker (bỏ qua Reviewer và Final)
+python -X utf8 -m automation.review_loop run --project "D:\Du_An" --task-file task.txt --worker agy --reviewer none --final none
 
-```powershell
-python -X utf8 -m pytest -q tests/test_review_loop.py
+# Chạy với GLM làm Reviewer
+python -X utf8 -m automation.review_loop run --project "D:\Du_An" --task-file task.txt --criteria-file criteria.txt --worker agy --reviewer glm --final none
 ```

@@ -39,8 +39,18 @@ def validate(value, schema, path="result"):
             validate(v, schema["items"], f"{path}[{i}]")
 
 
+def _strip_json_fence(text: str) -> str:
+    s = text.strip()
+    if s.startswith("```"):
+        lines = s.splitlines()
+        if len(lines) >= 3 and lines[-1].strip() == "```":
+            return "\n".join(lines[1:-1]).strip()
+    return s
+
+
 def unwrap(text, schema):
-    value = json.loads(text.strip())  # No regex extraction / guessing from free text.
+    raw = _strip_json_fence(text)
+    value = json.loads(raw)  # No regex extraction / guessing from free text.
     if isinstance(value, dict) and (value.get("is_error") or value.get("status") in {"ERROR", "FAILED"}):
         detail = value.get("error") or value.get("result") or ""
         raise ValueError(f"CLI trả lỗi, không phải kết quả agent: {detail}".rstrip(": "))
@@ -51,7 +61,7 @@ def unwrap(text, schema):
     elif isinstance(value, dict) and "result" in value and "verdict" not in value:
         value = value["result"]
     if isinstance(value, str):
-        value = json.loads(value.strip())
+        value = json.loads(_strip_json_fence(value))
     validate(value, schema)
     if not value["summary"].strip():
         raise ValueError("Thiếu tóm tắt kết quả")
