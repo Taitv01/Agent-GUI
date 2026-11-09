@@ -16,5 +16,8 @@ dev = ["pytest>=8.0"]
 [project.scripts]
 agent-gui = "automation.review_loop.__main__:main"
 
+[tool.setuptools.packages.find]
+include = ["automation*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
