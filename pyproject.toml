@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-review-loop-gui"
+version = "0.1.0"
+description = "Tự động điều phối vòng lặp Thực hiện (Antigravity) → Kiểm tra độc lập (Codex) → Kiểm cuối (Claude Code) kèm giao diện Tkinter và cơ chế bảo vệ dữ liệu."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+review-loop = "automation.review_loop.__main__:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
