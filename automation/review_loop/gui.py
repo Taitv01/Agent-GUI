@@ -10,8 +10,7 @@ from .adapters import cli_health, executable
 from .core import Controller, create_job, is_dharma_project
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DHARMA_DIR = ROOT.parent / "Phat Phap"
-INITIAL_PROJECT = DEFAULT_DHARMA_DIR if is_dharma_project(DEFAULT_DHARMA_DIR) else ROOT
+INITIAL_PROJECT = ROOT
 
 DEFAULT_TASK = """Kiểm tra chất lượng M5 trong phạm vi đã thống nhất:
 - Đối chiếu SN 56 / tu5-56b.htm với raw, tiêu đề và cách ánh xạ mã kinh.
@@ -41,7 +40,7 @@ LABELS = {"NEW": "Chưa chạy", "RUNNING": "Đang chạy", "PAUSED": "Đã tạ
 class App:
     def __init__(self, window):
         self.window, self.bus, self.active, self.folder = window, queue.Queue(), False, None
-        window.title("Agent Review Loop — Agy · Codex · Claude")
+        window.title("Agent GUI — Agy · Codex · Claude")
         window.geometry("1060x850")
         window.minsize(880, 720)
         window.configure(bg="#eef2f5")
