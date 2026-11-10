@@ -39,10 +39,14 @@ def load_provider_settings() -> dict:
                     default["glm"].update(saved["glm"])
                 if isinstance(saved.get("models"), dict):
                     default["models"].update(saved["models"])
+                    if not isinstance(saved.get("glm"), dict) or "model" not in saved["glm"]:
+                        default["glm"]["model"] = saved["models"].get("glm") or "glm-4.7"
                 if isinstance(saved.get("default_roles"), dict):
                     default["default_roles"].update(saved["default_roles"])
         except Exception:
             pass
+    # The dedicated GLM setting is authoritative for older, conflicting saves.
+    default["models"]["glm"] = default["glm"].get("model") or "glm-4.7"
     return default
 
 
@@ -134,7 +138,7 @@ def cli_health(name):
     return path, note
 
 
-def launch_login_terminal(provider: str) -> str:
+def launch_login_terminal(provider: str, on_exit=None) -> str:
     """Open an interactive console window so the user can authenticate a CLI."""
     if provider == "agy":
         exe = executable("agy")
@@ -159,9 +163,17 @@ def launch_login_terminal(provider: str) -> str:
         raise ValueError(f"Không hỗ trợ đăng nhập cho {provider}")
 
     if os.name == "nt":
-        subprocess.Popen(cmd_list, creationflags=subprocess.CREATE_NEW_CONSOLE)
+        process = subprocess.Popen(cmd_list, creationflags=subprocess.CREATE_NEW_CONSOLE)
     else:
-        subprocess.Popen(cmd_list)
+        process = subprocess.Popen(cmd_list)
+    if on_exit:
+        import threading
+
+        def wait_for_login():
+            process.wait()
+            on_exit()
+
+        threading.Thread(target=wait_for_login, daemon=True).start()
     return desc
 
 
@@ -207,6 +219,42 @@ def _extract_cli_error(folder):
         if name == "stderr.log" and lines:
             return lines[-1][:240]
     return ""
+
+
+def _gemini_worker_policy(folder: Path) -> Path:
+    """Allow project verification commands in headless auto-edit mode only.
+
+    ProcessRunner starts Gemini in the project directory; Gemini validates the
+    shell tool's working directory against its workspace. This is a command
+    allowlist, not an OS sandbox for the test code itself.
+    """
+    prefixes = ["pytest", "git status", "git diff", "npm test", "npm run test"]
+    for python in ("python", "python3", "py", ".venv/bin/python",
+                   "./.venv/bin/python", ".venv\\Scripts\\python.exe",
+                   ".\\.venv\\Scripts\\python.exe"):
+        prefixes.extend(f"{python} -m {module}" for module in ("pytest", "unittest", "compileall"))
+    policy = folder.resolve() / "gemini-worker-policy.toml"
+    policy.write_text(
+        '[[rule]]\n'
+        'toolName = "run_shell_command"\n'
+        f'commandPrefix = {json.dumps(prefixes)}\n'
+        'decision = "allow"\n'
+        'priority = 100\n'
+        'modes = ["autoEdit"]\n'
+        'interactive = false\n'
+        'allowRedirection = false\n'
+        # autoEdit bypasses allowRedirection=false in Gemini 0.42, so enforce
+        # this explicitly (also disallow redirection inside quoted arguments).
+        '\n[[rule]]\n'
+        'toolName = "run_shell_command"\n'
+        'commandRegex = ".*[<>]"\n'
+        'decision = "deny"\n'
+        'priority = 110\n'
+        'modes = ["autoEdit"]\n'
+        'interactive = false\n',
+        encoding="utf-8",
+    )
+    return policy
 
 
 def commands(role, folder, project, model="", prompt="", provider=""):
@@ -279,6 +327,8 @@ def commands(role, folder, project, model="", prompt="", provider=""):
         args = [exe] + ([js] if js else []) + [
             "--skip-trust", "--approval-mode", approval, "-o", "json"
         ]
+        if role == "worker":
+            args += ["--policy", str(_gemini_worker_policy(folder))]
         if model:
             args += ["-m", model]
         schema_instruction = (

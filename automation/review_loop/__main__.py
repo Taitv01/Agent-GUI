@@ -35,6 +35,7 @@ def main():
                 print(f"{name}: {path} — {note}")
                 if args.ping:
                     p_ok, p_msg = ping_provider(name)
+                    ok = ok and p_ok
                     print(f"   ping {name}: {p_msg}")
             except FileNotFoundError as e:
                 print(e)
